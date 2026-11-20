@@ -42,13 +42,13 @@ export function App() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [lightboxReceipt, setLightboxReceipt] = useState<ReceiptMeta | null>(null);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [legacyActionLoading, setLegacyActionLoading] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const historyPushedRef = useRef(false);
 
   const hasAnyModalOpen =
-    sheetOpen || Boolean(lightboxReceipt) || Boolean(txToDelete) || confirmResetOpen;
+    sheetOpen || Boolean(lightboxReceipt) || Boolean(txToDelete) || store.hasLegacyPrompt;
 
   // Deteksi scroll untuk efek iOS Large Title di mobile
   useEffect(() => {
@@ -75,8 +75,6 @@ export function App() {
         setLightboxReceipt(null);
       } else if (txToDelete) {
         setTxToDelete(null);
-      } else if (confirmResetOpen) {
-        setConfirmResetOpen(false);
       } else if (sheetOpen) {
         setSheetOpen(false);
         setEditingTx(null);
@@ -85,7 +83,7 @@ export function App() {
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [lightboxReceipt, txToDelete, confirmResetOpen, sheetOpen]);
+  }, [lightboxReceipt, txToDelete, sheetOpen]);
 
   const openNewTransaction = useCallback(() => {
     setEditingTx(null);
@@ -116,7 +114,6 @@ export function App() {
       if (e.key === 'Escape') {
         if (lightboxReceipt) setLightboxReceipt(null);
         else if (txToDelete) setTxToDelete(null);
-        else if (confirmResetOpen) setConfirmResetOpen(false);
         else if (sheetOpen) closeSheet();
         return;
       }
@@ -139,7 +136,6 @@ export function App() {
     hasAnyModalOpen,
     lightboxReceipt,
     txToDelete,
-    confirmResetOpen,
     sheetOpen,
     closeSheet,
     openNewTransaction,
@@ -516,7 +512,17 @@ export function App() {
               onSaveCategory={store.saveCategory}
               onDeleteCategory={store.deleteCategory}
               onRestoreData={store.restoreFullData}
-              onRequestResetAll={() => setConfirmResetOpen(true)}
+              isResetting={store.isResetting}
+              driveResetError={store.driveResetError}
+              onExecuteReset={store.executeReset}
+              onRetryDriveReset={store.retryDriveReset}
+              onResetComplete={() => {
+                setSheetOpen(false);
+                setEditingTx(null);
+                setLightboxReceipt(null);
+                setTxToDelete(null);
+                setActiveTab('dashboard');
+              }}
               onLockNow={() => store.setIsUnlocked(false)}
               onToast={store.pushToast}
             />
@@ -630,17 +636,30 @@ export function App() {
       />
 
       <ConfirmDialog
-        open={confirmResetOpen}
-        title="Hapus Semua Data?"
-        description="Seluruh transaksi, anggaran, dan file bukti lokal akan dihapus permanen. Pastikan Anda sudah membuat backup jika diperlukan."
-        confirmLabel="Hapus Permanen"
-        danger
-        requireKeyword="HAPUS"
-        onConfirm={() => {
-          store.resetAllData();
-          setConfirmResetOpen(false);
+        open={store.hasLegacyPrompt}
+        title="Data contoh terdeteksi. Hapus dan mulai dari kosong?"
+        description="Aplikasi mendeteksi data dari versi sebelumnya yang mungkin masih berisi contoh transaksi atau saldo awal contoh. Pilih Hapus data contoh untuk memulai bersih dari Rp 0, atau Simpan dulu jika ingin tetap menyimpannya."
+        confirmLabel="Hapus data contoh"
+        cancelLabel="Simpan dulu"
+        loading={legacyActionLoading}
+        loadingLabel="Membersihkan data contoh…"
+        onConfirm={async () => {
+          setLegacyActionLoading(true);
+          try {
+            await store.resolveLegacyData('delete');
+            setActiveTab('dashboard');
+          } finally {
+            setLegacyActionLoading(false);
+          }
         }}
-        onCancel={() => setConfirmResetOpen(false)}
+        onCancel={async () => {
+          setLegacyActionLoading(true);
+          try {
+            await store.resolveLegacyData('keep');
+          } finally {
+            setLegacyActionLoading(false);
+          }
+        }}
       />
 
       <ToastStack toasts={store.toasts} onDismiss={store.dismissToast} />

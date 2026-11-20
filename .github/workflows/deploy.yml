@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
+      - name: Pasang react-is (dibutuhkan recharts)
+        run: npm install react-is@$(node -p "require('react/package.json').version") --legacy-peer-deps
       - run: npm run build
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}

@@ -1,0 +1,6 @@
+{
+  "name": "Keuangan Harian",
+  "description": "Aplikasi pencatat keuangan harian mobile-first (PWA) dengan penyimpanan data dan bukti pembayaran langsung ke Google Drive.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}

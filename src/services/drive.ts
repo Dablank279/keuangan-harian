@@ -480,10 +480,11 @@ export async function uploadReportToDrive(params: {
 export async function createDriveBackup(
   folders: DriveFolders,
   data: AppData,
-  prefix = 'backup'
+  prefix = 'backup',
+  customFileName?: string
 ): Promise<DriveBackupItem> {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
-  const fileName = `${prefix}_${stamp}.json`;
+  const fileName = customFileName || `${prefix}_${stamp}.json`;
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const uploaded = await uploadMultipartToDrive({
     fileName,
@@ -498,6 +499,106 @@ export async function createDriveBackup(
     size: String(blob.size),
     webViewLink: uploaded.webViewLink,
   };
+}
+
+/** Hapus satu file/folder buatan aplikasi di Google Drive (aman untuk scope drive.file) */
+async function deleteDriveItem(fileId: string): Promise<void> {
+  if (!navigator.onLine) {
+    throw new DriveServiceError('Koneksi internet terputus saat menghapus file di Drive.', 'OFFLINE');
+  }
+  const token = getStoredToken();
+  if (!token) {
+    throw new DriveServiceError('Sesi Google berakhir. Silakan masuk ulang.', 'UNAUTHORIZED');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${DRIVE_API}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new DriveServiceError('Gagal menghubungi Google Drive saat menghapus file.', 'OFFLINE');
+  }
+
+  if (res.status === 404) return; // Sudah terhapus
+  if (res.status === 401) {
+    await requestGoogleAccessToken('');
+    return deleteDriveItem(fileId);
+  }
+  if (!res.ok) {
+    throw new DriveServiceError(`Gagal menghapus file di Google Drive (kode ${res.status}).`, 'UNKNOWN');
+  }
+}
+
+/** Daftar semua child dalam sebuah folder Drive (mendukung pagination) */
+async function listFolderChildren(folderId: string): Promise<Array<{ id: string; mimeType: string }>> {
+  const items: Array<{ id: string; mimeType: string }> = [];
+  let pageToken = '';
+
+  do {
+    const q = `'${folderId}' in parents and trashed=false`;
+    const tokenParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
+    const res = await driveFetch(
+      `${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,mimeType)&pageSize=1000${tokenParam}`
+    );
+    const json = await res.json();
+    if (Array.isArray(json.files)) {
+      items.push(...json.files);
+    }
+    pageToken = json.nextPageToken || '';
+  } while (pageToken);
+
+  return items;
+}
+
+/** Hapus file data/transaksi.json dari Google Drive sambil menjaga sesi login & folder induk tetap ada */
+export async function deleteRemoteTransaksiFile(folders: DriveFolders): Promise<DriveFolders> {
+  if (folders.transaksiFileId) {
+    await deleteDriveItem(folders.transaksiFileId);
+  } else {
+    const q = `name='transaksi.json' and '${folders.dataFolderId}' in parents and trashed=false`;
+    const searchRes = await driveFetch(
+      `${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=10`
+    );
+    const searchJson = await searchRes.json();
+    for (const file of searchJson.files || []) {
+      await deleteDriveItem(file.id);
+    }
+  }
+
+  const updated: DriveFolders = {
+    ...folders,
+    transaksiFileId: undefined,
+  };
+  try {
+    sessionStorage.setItem(SESSION_FOLDERS_KEY, JSON.stringify(updated));
+  } catch {
+    // Abaikan
+  }
+  return updated;
+}
+
+/** Hapus seluruh foto/PDF bukti pembayaran di dalam folder bukti/ (membiarkan folder induk tetap ada) */
+export async function deleteAllDriveReceipts(folders: DriveFolders): Promise<number> {
+  const topEntries = await listFolderChildren(folders.buktiFolderId);
+  let deletedCount = 0;
+
+  for (const entry of topEntries) {
+    if (entry.mimeType === 'application/vnd.google-apps.folder') {
+      const subFiles = await listFolderChildren(entry.id);
+      for (const file of subFiles) {
+        await deleteDriveItem(file.id);
+        deletedCount++;
+      }
+      await deleteDriveItem(entry.id);
+    } else {
+      await deleteDriveItem(entry.id);
+      deletedCount++;
+    }
+  }
+
+  return deletedCount;
 }
 
 /** Ambil daftar file backup di folder backup/ */

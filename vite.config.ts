@@ -5,8 +5,12 @@ import fs from 'fs';
 import path from 'path';
 import { defineConfig } from 'vite';
 
+// Harus sama persis dengan nama repo GitHub (huruf besar/kecil berpengaruh)
+const BASE = '/keuangan-harian/';
+
 export default defineConfig(() => {
   return {
+    base: BASE,
     plugins: [
       react(),
       tailwindcss(),
@@ -14,7 +18,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
-          id: '/',
+          id: BASE,
           name: 'Keuangan Harian',
           short_name: 'Keuangan',
           description: 'Catat pemasukan, pengeluaran, anggaran bulanan, dan bukti pembayaran langsung ke Google Drive Anda.',
@@ -22,25 +26,25 @@ export default defineConfig(() => {
           background_color: '#f8fafc',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '/',
-          scope: '/',
+          start_url: BASE,
+          scope: BASE,
           lang: 'id',
           categories: ['finance', 'productivity'],
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: 'pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: 'pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: 'pwa-maskable-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',

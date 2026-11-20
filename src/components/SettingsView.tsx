@@ -15,9 +15,6 @@ import {
   Pencil,
   Lock,
   Unlock,
-  FolderTree,
-  ChevronDown,
-  ChevronUp,
   Smartphone,
   Loader2,
   RotateCcw,
@@ -41,7 +38,6 @@ import { formatDateBySetting, formatFileSize, formatRupiah, formatThousandsInput
 import { triggerBrowserDownload } from '../utils/export';
 import {
   createDriveBackup,
-  isGoogleClientConfigured,
   listDriveBackups,
   readDriveBackup,
 } from '../services/drive';
@@ -110,7 +106,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onToast,
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
-  const [showSetupGuide, setShowSetupGuide] = useState(!isGoogleClientConfigured());
 
   // Backup Drive state
   const [backups, setBackups] = useState<DriveBackupItem[]>([]);
@@ -406,45 +401,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div>
               <GoogleSignInButton onClick={onLoginGoogle} loading={isAuthLoading} />
-              <button
-                type="button"
-                onClick={() => setShowSetupGuide((s) => !s)}
-                className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 inline-flex items-center gap-1"
-              >
-                Panduan Setup Google Cloud
-                {showSetupGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
             </div>
-          </div>
-        )}
-
-        {/* Struktur Folder Drive */}
-        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 p-3.5 text-xs text-slate-600 dark:text-slate-400">
-          <p className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1.5">
-            <FolderTree className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            Struktur Otomatis di Google Drive
-          </p>
-          <pre className="font-mono text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 overflow-x-auto">{`Keuangan Harian/
-├── data/transaksi.json    (transaksi, dompet, kategori, anggaran)
-├── bukti/YYYY-MM/         (foto/PDF bukti per bulan)
-├── backup/                (backup otomatis mingguan & manual)
-└── laporan/               (salinan ekspor CSV & PDF)`}</pre>
-        </div>
-
-        {/* Panduan Setup Google Cloud singkat */}
-        {showSetupGuide && (
-          <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/30 p-4 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
-            <p className="font-semibold text-slate-900 dark:text-slate-100">
-              Cara Mengaktifkan Login Google Drive (1 kali setup):
-            </p>
-            <ol className="list-decimal pl-4 space-y-1">
-              <li>Buka Google Cloud Console → buat Project baru → aktifkan <strong>Google Drive API</strong>.</li>
-              <li>Atur <strong>OAuth Consent Screen</strong> (External) dan tambahkan scope <code>https://www.googleapis.com/auth/drive.file</code>.</li>
-              <li>Buat <strong>Credentials → OAuth Client ID (Web application)</strong>, lalu isi <em>Authorized JavaScript origins</em> dengan URL aplikasi Anda (mis. <code>http://localhost:3000</code>).</li>
-              <li>Salin Client ID ke file <code>.env</code> pada variabel <code>VITE_GOOGLE_CLIENT_ID</code>, lalu jalankan ulang server.</li>
-            </ol>
           </div>
         )}
       </section>

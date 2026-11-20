@@ -21,6 +21,7 @@ import {
   Smartphone,
   Loader2,
   RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 import type {
   AppData,
@@ -30,6 +31,7 @@ import type {
   DriveBackupItem,
   DriveFolders,
   GoogleUser,
+  ResetMode,
   SyncStatus,
   ThemeMode,
   ToastItem,
@@ -44,6 +46,7 @@ import {
   readDriveBackup,
 } from '../services/drive';
 import { GoogleSignInButton, SyncStatusLine } from './GoogleSignInButton';
+import { ConfirmDialog } from './ConfirmDialog';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface SettingsViewProps {
@@ -64,7 +67,14 @@ interface SettingsViewProps {
   onSaveCategory: (cat: Omit<Category, 'id'> & { id?: string }) => void;
   onDeleteCategory: (catId: string) => void;
   onRestoreData: (restored: AppData) => void;
-  onRequestResetAll: () => void;
+  isResetting: boolean;
+  driveResetError: string | null;
+  onExecuteReset: (
+    mode: ResetMode,
+    options?: { deleteDriveReceipts?: boolean }
+  ) => Promise<{ ok: boolean; driveWarning?: string }>;
+  onRetryDriveReset: () => Promise<{ ok: boolean; driveWarning?: string }>;
+  onResetComplete: () => void;
   onLockNow: () => void;
   onToast: (toast: Omit<ToastItem, 'id'>) => void;
 }
@@ -91,7 +101,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSaveCategory,
   onDeleteCategory,
   onRestoreData,
-  onRequestResetAll,
+  isResetting,
+  driveResetError,
+  onExecuteReset,
+  onRetryDriveReset,
+  onResetComplete,
   onLockNow,
   onToast,
 }) => {
@@ -124,6 +138,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Editor PIN
   const [pinInput, setPinInput] = useState('');
   const [showPinEditor, setShowPinEditor] = useState(false);
+
+  // Reset Data (Zona Berbahaya)
+  const [pendingResetMode, setPendingResetMode] = useState<ResetMode | null>(null);
+  const [deleteDriveReceipts, setDeleteDriveReceipts] = useState(false);
 
   const loadDriveBackups = async () => {
     if (!folders) return;
@@ -1011,25 +1029,198 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
       </div>
 
-      {/* 7. Zona Bahaya */}
-      <section className="rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/60 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-rose-700 dark:text-rose-400">
-            Hapus Semua Data
-          </h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Menghapus seluruh transaksi & bukti lokal di perangkat ini serta mengatur ulang kategori/dompet ke awal.
-          </p>
+      {/* 7. Zona Berbahaya */}
+      <section className="rounded-2xl bg-rose-50/70 dark:bg-rose-950/25 border border-rose-200 dark:border-rose-900/60 p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-rose-800 dark:text-rose-300">
+              Zona Berbahaya
+            </h3>
+            <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-0.5 leading-relaxed">
+              Tindakan di bawah ini bersifat permanen. Jika sudah masuk Google, aplikasi otomatis mencadangkan data ke folder backup di Drive sebelum menghapus.
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onRequestResetAll}
-          className="min-h-[44px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-2 shrink-0 whitespace-nowrap"
-        >
-          <Trash2 className="w-4 h-4" />
-          Hapus Semua Data
-        </button>
+
+        {driveResetError && (
+          <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+            <span>{driveResetError}</span>
+            <button
+              type="button"
+              disabled={isResetting}
+              onClick={() => void onRetryDriveReset()}
+              className="min-h-[44px] px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold shrink-0 disabled:opacity-50"
+            >
+              {isResetting ? 'Mencoba ulang…' : 'Coba lagi'}
+            </button>
+          </div>
+        )}
+
+        <div className="divide-y divide-rose-200/70 dark:divide-rose-900/50 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-rose-200/70 dark:border-rose-900/50">
+          {/* Opsi A: Hapus semua transaksi */}
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Hapus semua transaksi
+              </p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Menghapus seluruh transaksi saja. Dompet, kategori, dan anggaran tetap dipertahankan; saldo dompet kembali ke saldo awal.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isResetting}
+              onClick={() => setPendingResetMode('transactions_only')}
+              className="min-h-[44px] px-4 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100/70 dark:hover:bg-rose-950/60 text-xs font-semibold inline-flex items-center justify-center gap-2 shrink-0 whitespace-nowrap disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Hapus semua transaksi
+            </button>
+          </div>
+
+          {/* Opsi B: Reset ke pengaturan awal */}
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Reset ke pengaturan awal
+              </p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Menghapus transaksi, anggaran, serta dompet & kategori buatan sendiri. Kembali ke 3 dompet bawaan (Rp 0) dan kategori standar.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isResetting}
+              onClick={() => setPendingResetMode('factory_reset')}
+              className="min-h-[44px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-2 shrink-0 whitespace-nowrap disabled:opacity-50"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset ke pengaturan awal
+            </button>
+          </div>
+
+          {/* Opsi C: Hapus semua data + file Drive (hanya tampil jika login Google) */}
+          {user && (
+            <div className="p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                    Hapus semua data + file Drive
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                    Reset seluruh data lokal dan hapus <code className="text-[11px]">data/transaksi.json</code> di Google Drive (hanya file buatan aplikasi; folder &quot;Keuangan Harian&quot; tetap dibiarkan).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={isResetting}
+                  onClick={() => setPendingResetMode('full_with_drive')}
+                  className="min-h-[44px] px-4 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold inline-flex items-center justify-center gap-2 shrink-0 whitespace-nowrap disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Hapus semua data + file Drive
+                </button>
+              </div>
+
+              <label className="min-h-[44px] px-3 py-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/50 flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={deleteDriveReceipts}
+                  disabled={isResetting}
+                  onChange={(e) => setDeleteDriveReceipts(e.target.checked)}
+                  className="w-4 h-4 rounded border-rose-400 text-rose-600 focus:ring-rose-500 shrink-0"
+                />
+                <span className="text-xs text-slate-700 dark:text-slate-300">
+                  Hapus juga foto bukti pembayaran di Drive
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
       </section>
+
+      {/* Dialog Konfirmasi Reset Aman 5 Langkah */}
+      {(() => {
+        const txCount = data.transactions.length;
+        const receiptCount = data.transactions.filter((t) => Boolean(t.receipt)).length;
+        const budgetCount =
+          pendingResetMode === 'transactions_only' ? 0 : data.budgets.length;
+
+        const dialogTitle =
+          pendingResetMode === 'transactions_only'
+            ? 'Hapus Semua Transaksi?'
+            : pendingResetMode === 'factory_reset'
+            ? 'Reset ke Pengaturan Awal?'
+            : 'Hapus Semua Data & File Drive?';
+
+        const dialogDescription =
+          pendingResetMode === 'transactions_only'
+            ? 'Seluruh riwayat transaksi dan cache bukti lokal akan dihapus permanen. Dompet, kategori, dan anggaran Anda tetap disimpan.'
+            : pendingResetMode === 'factory_reset'
+            ? 'Seluruh transaksi, anggaran, serta dompet dan kategori buatan sendiri akan dihapus. Aplikasi kembali ke kondisi awal dengan saldo Rp 0.'
+            : 'Seluruh data lokal dan file data/transaksi.json di Google Drive akan dihapus permanen. Sesi login Google dan folder induk "Keuangan Harian" tetap dipertahankan.';
+
+        return (
+          <ConfirmDialog
+            open={Boolean(pendingResetMode)}
+            title={dialogTitle}
+            description={dialogDescription}
+            confirmLabel="Hapus Permanen"
+            cancelLabel="Batal"
+            danger
+            requireKeyword="RESET"
+            loading={isResetting}
+            loadingLabel={user ? 'Mencadangkan & mereset…' : 'Mereset data…'}
+            secondaryActionLabel="Unduh backup dulu (JSON)"
+            onSecondaryAction={handleDownloadLocalBackup}
+            onConfirm={async () => {
+              if (!pendingResetMode) return;
+              const result = await onExecuteReset(pendingResetMode, {
+                deleteDriveReceipts,
+              });
+              if (result.ok) {
+                setPendingResetMode(null);
+                setDeleteDriveReceipts(false);
+                onResetComplete();
+              }
+            }}
+            onCancel={() => {
+              if (!isResetting) setPendingResetMode(null);
+            }}
+          >
+            <div className="space-y-3">
+              <div className="rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 p-3 text-xs text-rose-800 dark:text-rose-200 space-y-1">
+                <p className="font-semibold tabular-nums">
+                  Akan menghapus {txCount} transaksi, {receiptCount} bukti, {budgetCount} anggaran
+                </p>
+                {user && (
+                  <p className="text-[11px] text-rose-700/90 dark:text-rose-300/90">
+                    Backup otomatis akan disimpan ke Google Drive sebelum penghapusan dijalankan.
+                  </p>
+                )}
+              </div>
+
+              {pendingResetMode === 'full_with_drive' && (
+                <label className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={deleteDriveReceipts}
+                    disabled={isResetting}
+                    onChange={(e) => setDeleteDriveReceipts(e.target.checked)}
+                    className="w-4 h-4 rounded border-rose-400 text-rose-600 focus:ring-rose-500 shrink-0"
+                  />
+                  <span className="text-xs text-slate-700 dark:text-slate-300">
+                    Hapus juga foto bukti pembayaran di Drive
+                  </span>
+                </label>
+              )}
+            </div>
+          </ConfirmDialog>
+        );
+      })()}
     </div>
   );
 };

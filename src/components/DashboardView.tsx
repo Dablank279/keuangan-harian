@@ -353,191 +353,246 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </section>
 
-      {/* Baris 2: Grafik Tren (8 kol) + Donut Kategori (4 kol) */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Tren Harian / Mingguan */}
-        <div className="lg:col-span-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Tren Arus Kas
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pemasukan vs Pengeluaran · Bulan lalu keluar {formatRupiah(summary.prevExpense)}
-              </p>
-            </div>
-            <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
-              <button
-                type="button"
-                onClick={() => setTrendMode('daily')}
-                className={`min-h-[34px] px-3 rounded-lg text-xs font-semibold transition-colors ${
-                  trendMode === 'daily'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                14 Hari
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrendMode('weekly')}
-                className={`min-h-[34px] px-3 rounded-lg text-xs font-semibold transition-colors ${
-                  trendMode === 'weekly'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                Mingguan
-              </button>
-            </div>
-          </div>
+      {data.transactions.length === 0 ? (
+        <section className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 px-6 py-10 sm:py-12 shadow-xs text-center flex flex-col items-center justify-center">
+          {/* Ilustrasi sederhana buku catatan keuangan & dompet */}
+          <svg
+            viewBox="0 0 180 130"
+            className="w-40 h-28 mb-4 text-teal-600 dark:text-teal-400"
+            fill="none"
+            aria-hidden="true"
+          >
+            <rect
+              x="26"
+              y="22"
+              width="128"
+              height="86"
+              rx="18"
+              className="fill-teal-50 dark:fill-teal-950/50 stroke-teal-200 dark:stroke-teal-800/80"
+              strokeWidth="2"
+            />
+            <rect
+              x="44"
+              y="40"
+              width="58"
+              height="10"
+              rx="5"
+              className="fill-teal-600/20 dark:fill-teal-400/20"
+            />
+            <rect
+              x="44"
+              y="58"
+              width="86"
+              height="8"
+              rx="4"
+              className="fill-slate-200 dark:fill-slate-700"
+            />
+            <rect
+              x="44"
+              y="74"
+              width="66"
+              height="8"
+              rx="4"
+              className="fill-slate-200 dark:fill-slate-700"
+            />
+            <circle
+              cx="134"
+              cy="84"
+              r="22"
+              className="fill-teal-600 dark:fill-teal-500"
+            />
+            <path
+              d="M134 75v18M125 84h18"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} margin={{ top: 8, right: 6, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.2)" />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 11, fill: '#94a3b8' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(v) => formatRupiahShort(Number(v))}
-                  tick={{ fontSize: 11, fill: '#94a3b8' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={68}
-                />
-                <Tooltip
-                  formatter={(value) => formatRupiah(Number(value ?? 0))}
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid rgba(148,163,184,0.25)',
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    color: '#f8fafc',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="pemasukan" name="Pemasukan" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={24} />
-                <Bar dataKey="pengeluaran" name="Pengeluaran" fill="#f43f5e" radius={[6, 6, 0, 0]} maxBarSize={24} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Donut Pengeluaran per Kategori */}
-        <div className="lg:col-span-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-            Pengeluaran per Kategori
+          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Catatan keuangan Anda masih kosong
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Distribusi bulan ini
+          <p className="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+            Mulai catat pemasukan, pengeluaran, atau lampirkan bukti pembayaran pertama Anda. Semua data otomatis tersimpan aman di perangkat dan Google Drive.
           </p>
+          <button
+            type="button"
+            onClick={onAddTransaction}
+            className="mt-5 min-h-[44px] px-5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-sm shadow-teal-600/20 active:scale-[0.99] transition"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah transaksi pertama
+          </button>
+        </section>
+      ) : (
+        <>
+          {/* Baris 2: Grafik Tren (8 kol) + Donut Kategori (4 kol) */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Tren Harian / Mingguan */}
+            <div className="lg:col-span-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    Tren Arus Kas
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Pemasukan vs Pengeluaran · Bulan lalu keluar {formatRupiah(summary.prevExpense)}
+                  </p>
+                </div>
+                <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setTrendMode('daily')}
+                    className={`min-h-[34px] px-3 rounded-lg text-xs font-semibold transition-colors ${
+                      trendMode === 'daily'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    14 Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTrendMode('weekly')}
+                    className={`min-h-[34px] px-3 rounded-lg text-xs font-semibold transition-colors ${
+                      trendMode === 'weekly'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Mingguan
+                  </button>
+                </div>
+              </div>
 
-          {categoryBreakdown.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-10 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Belum ada pengeluaran bulan ini.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="h-44 w-full mt-2">
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryBreakdown}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={48}
-                      outerRadius={72}
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {categoryBreakdown.map((entry) => (
-                        <Cell key={entry.id} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <BarChart data={trendData} margin={{ top: 8, right: 6, left: -12, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.2)" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => formatRupiahShort(Number(v))}
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={68}
+                    />
                     <Tooltip
                       formatter={(value) => formatRupiah(Number(value ?? 0))}
                       contentStyle={{
                         borderRadius: '12px',
-                        border: 'none',
+                        border: '1px solid rgba(148,163,184,0.25)',
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
                         color: '#f8fafc',
                         fontSize: '12px',
                       }}
                     />
-                  </PieChart>
+                    <Bar dataKey="pemasukan" name="Pemasukan" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="pengeluaran" name="Pengeluaran" fill="#f43f5e" radius={[6, 6, 0, 0]} maxBarSize={24} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
 
-              <ul className="mt-2 space-y-2 text-xs">
-                {categoryBreakdown.slice(0, 5).map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="truncate text-slate-700 dark:text-slate-300">
-                        {item.emoji} {item.name}
-                      </span>
-                    </div>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
-                      {formatRupiah(item.value)} <span className="text-slate-400 font-normal">({item.pct}%)</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Baris 3: 5 Transaksi Terakhir (7 kol) + Progress Anggaran Bulanan (5 kol) */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* 5 Transaksi Terakhir */}
-        <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
+            {/* Donut Pengeluaran per Kategori */}
+            <div className="lg:col-span-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col">
               <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                Transaksi Terakhir
+                Pengeluaran per Kategori
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pengeluaran hari ini: <strong className="tabular-nums text-slate-700 dark:text-slate-200">{formatRupiah(summary.todayExpense)}</strong>
+                Distribusi bulan ini
               </p>
-            </div>
-            <button
-              type="button"
-              onClick={onNavigateHistory}
-              className="min-h-[38px] px-3 rounded-xl text-xs font-semibold text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 inline-flex items-center gap-1 whitespace-nowrap"
-            >
-              Semua Riwayat
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
 
-          {recentTransactions.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Belum ada transaksi tercatat
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Mulai catat pengeluaran atau pemasukan pertamamu hari ini.
-              </p>
-              <button
-                type="button"
-                onClick={onAddTransaction}
-                className="mt-4 min-h-[44px] px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold inline-flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Catat Transaksi Pertama
-              </button>
+              {categoryBreakdown.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-10 text-center">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Belum ada pengeluaran bulan ini.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="h-44 w-full mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryBreakdown}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={48}
+                          outerRadius={72}
+                          paddingAngle={2}
+                          stroke="none"
+                        >
+                          {categoryBreakdown.map((entry) => (
+                            <Cell key={entry.id} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => formatRupiah(Number(value ?? 0))}
+                          contentStyle={{
+                            borderRadius: '12px',
+                            border: 'none',
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            color: '#f8fafc',
+                            fontSize: '12px',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <ul className="mt-2 space-y-2 text-xs">
+                    {categoryBreakdown.slice(0, 5).map((item) => (
+                      <li key={item.id} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="truncate text-slate-700 dark:text-slate-300">
+                            {item.emoji} {item.name}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
+                          {formatRupiah(item.value)} <span className="text-slate-400 font-normal">({item.pct}%)</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          </section>
+
+          {/* Baris 3: 5 Transaksi Terakhir (7 kol) + Progress Anggaran Bulanan (5 kol) */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* 5 Transaksi Terakhir */}
+            <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    Transaksi Terakhir
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Pengeluaran hari ini: <strong className="tabular-nums text-slate-700 dark:text-slate-200">{formatRupiah(summary.todayExpense)}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onNavigateHistory}
+                  className="min-h-[38px] px-3 rounded-xl text-xs font-semibold text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/40 inline-flex items-center gap-1 whitespace-nowrap"
+                >
+                  Semua Riwayat
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {recentTransactions.map((tx) => {
                 const cat = catMap.get(tx.categoryId);
                 const wallet = walletMap.get(tx.walletId);
@@ -608,7 +663,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 );
               })}
             </div>
-          )}
         </div>
 
         {/* Progress Anggaran Bulanan */}
@@ -683,6 +737,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 };

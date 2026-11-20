@@ -109,6 +109,8 @@ export type SyncStatus =
 
 export type NavTab = 'dashboard' | 'history' | 'reports' | 'settings';
 
+export type ResetMode = 'transactions_only' | 'factory_reset' | 'full_with_drive';
+
 export interface ToastItem {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';

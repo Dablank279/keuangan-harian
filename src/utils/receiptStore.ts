@@ -1,7 +1,6 @@
 /**
- * Penyimpanan lokal bukti pembayaran menggunakan IndexedDB.
- * Memungkinkan pratinjau offline yang cepat serta antrian upload otomatis
- * ketika koneksi kembali online.
+ * Penyimpanan lokal bukti pembayaran menggunakan IndexedDB
+ * serta pelacak cache URL Blob untuk pembersihan memori saat reset.
  */
 
 const DB_NAME = 'keuangan_harian_receipts_db';
@@ -17,6 +16,38 @@ export interface StoredReceiptRecord {
   blob: Blob;
   pendingUpload: boolean;
   createdAt: string;
+}
+
+// Registri Blob URL aktif di memori agar ikut dibersihkan saat reset
+const activeBlobUrls = new Set<string>();
+
+export function createTrackedBlobUrl(blob: Blob): string {
+  const url = URL.createObjectURL(blob);
+  activeBlobUrls.add(url);
+  return url;
+}
+
+export function revokeTrackedBlobUrl(url: string | null | undefined): void {
+  if (!url) return;
+  if (activeBlobUrls.has(url)) {
+    activeBlobUrls.delete(url);
+  }
+  try {
+    URL.revokeObjectURL(url);
+  } catch {
+    // Abaikan jika sudah dicabut
+  }
+}
+
+export function revokeAllTrackedBlobUrls(): void {
+  activeBlobUrls.forEach((url) => {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // Abaikan
+    }
+  });
+  activeBlobUrls.clear();
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -83,6 +114,7 @@ export async function markReceiptUploaded(id: string): Promise<void> {
 }
 
 export async function clearAllLocalReceipts(): Promise<void> {
+  revokeAllTrackedBlobUrls();
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_BLOBS, 'readwrite');
